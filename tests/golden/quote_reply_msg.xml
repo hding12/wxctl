@@ -1,0 +1,22 @@
+<msg>
+  <appmsg appid="" sdkver="">
+    <title>Original Message</title>
+    <des></des>
+    <type>57</type>
+    <url></url>
+    <thumburl></thumburl>
+    <wcoverurl></wcoverurl>
+    <refermsg>
+      <type>1</type>
+      <content>this is the original quoted message</content>
+      <nickname>Friend A</nickname>
+      <wxid>wxid_original_sender</wxid>
+      <chatusr>wxid_chat_user</chatusr>
+      <svrid>1234567890</svrid>
+    </refermsg>
+  </appmsg>
+  <appinfo>
+    <version>1</version>
+    <appname>Sample Client</appname>
+  </appinfo>
+</msg>

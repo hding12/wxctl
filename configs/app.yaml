@@ -1,0 +1,11 @@
+wechat:
+  xwechat_root: ~/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files
+  key_file: ~/Library/Application Support/wxctl/state/wechat_keys.json
+  decrypted_root: ~/Library/Application Support/wxctl/decrypted
+runtime:
+  app_support_root: ~/Library/Application Support/wxctl
+  warehouse_db: ~/Library/Application Support/wxctl/warehouse/wxctl.sqlite3
+  raw_root: ~/Library/Application Support/wxctl/raw
+  export_root: ~/Library/Application Support/wxctl/exports
+  log_root: ~/Library/Application Support/wxctl/logs
+  state_root: ~/Library/Application Support/wxctl/state

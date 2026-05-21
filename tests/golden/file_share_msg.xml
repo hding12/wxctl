@@ -1,0 +1,25 @@
+<msg>
+  <appmsg appid="" sdkver="">
+    <title>document.pdf</title>
+    <des>PDF file</des>
+    <type>6</type>
+    <url></url>
+    <thumburl></thumburl>
+    <wcoverurl></wcoverurl>
+    <appattach>
+      <totallen>1234567</totallen>
+      <attachid>attach_abc123def456</attachid>
+      <emoticonmd5></emoticonmd5>
+      <fileext>pdf</fileext>
+      <cdnthumbaeskey></cdnthumbaeskey>
+      <aeskey>a1b2c3d4e5f6a7b8</aeskey>
+      <cdnthumburl></cdnthumburl>
+      <md5>m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6</md5>
+      <size>1234567</size>
+    </appattach>
+  </appmsg>
+  <appinfo>
+    <version>1</version>
+    <appname>Sample Client</appname>
+  </appinfo>
+</msg>

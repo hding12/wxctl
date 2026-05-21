@@ -1,0 +1,23 @@
+<msg>
+  <appmsg appid="wx1234567890abcdef" sdkver="1.0.0.0">
+    <title>Mini Program Demo</title>
+    <des>This is a mini program</des>
+    <type>33</type>
+    <url>https://example.invalid/mini/abc123</url>
+    <thumburl>https://mmbiz.qpic.cn/thumb/abc123</thumburl>
+    <wcoverurl></wcoverurl>
+    <wcscene>0</wcscene>
+    <weappinfo>
+      <username>gh_abc123@app</username>
+      <appid>wx1234567890abcdef</appid>
+      <type>2</type>
+      <pagepath>pages/index/index</pagepath>
+      <iconurl>https://mmbiz.qpic.cn/icon/abc123</iconurl>
+      <shareId>0_1234567890</shareId>
+    </weappinfo>
+  </appmsg>
+  <appinfo>
+    <version>1</version>
+    <appname>Mini Program</appname>
+  </appinfo>
+</msg>

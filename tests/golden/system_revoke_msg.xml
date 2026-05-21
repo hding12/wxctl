@@ -1,0 +1,8 @@
+<sysmsg type="revokemsg">
+  <revokemsg>
+    <session>wxid_abc123</session>
+    <msgid>1234567890</msgid>
+    <newmsgid>9876543210</newmsgid>
+    <replacemsg>&lt;a href=&quot;sampleclient://revoke/&quot;&gt;Friend A&lt;/a&gt; recalled a message</replacemsg>
+  </revokemsg>
+</sysmsg>

@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+.DS_Store
+*.sqlite3
+*.db
+state/
+raw/
+warehouse/
+exports/
+logs/
+decrypted/
+wechat_keys.json

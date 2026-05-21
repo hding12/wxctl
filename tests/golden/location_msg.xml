@@ -1,0 +1,17 @@
+<msg>
+  <appmsg appid="" sdkver="">
+    <title>My Location</title>
+    <des>123 Main Street, City</des>
+    <type>36</type>
+    <url>https://apis.map.qq.com/uri?l=39.9042,116.4074</url>
+    <thumburl></thumburl>
+    <wcoverurl></wcoverurl>
+    <locationlabel>Office</locationlabel>
+    <poiname>Some Location</poiname>
+    <poiid>poi_abc123</poiid>
+  </appmsg>
+  <appinfo>
+    <version>1</version>
+    <appname>Sample Client</appname>
+  </appinfo>
+</msg>

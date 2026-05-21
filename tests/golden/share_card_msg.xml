@@ -1,0 +1,17 @@
+<msg>
+  <appmsg appid="wx1234567890abcdef" sdkver="1.0.0.0">
+    <title>A Great Article</title>
+    <des>This is a description of a shared article</des>
+    <type>5</type>
+    <url>https://example.invalid/articles/abc123</url>
+    <thumburl>https://mmbiz.qpic.cn/thumb/abc123</thumburl>
+    <wcoverurl>https://mmbiz.qpic.cn/cover/abc123</wcoverurl>
+    <wcscene>1</wcscene>
+    <wcbiztitle>A Great Article - Sample Client</wcbiztitle>
+    <wcbizdes>Read more</wcbizdes>
+  </appmsg>
+  <appinfo>
+    <version>1</version>
+    <appname>Sample Client</appname>
+  </appinfo>
+</msg>
