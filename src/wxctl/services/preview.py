@@ -90,6 +90,7 @@ def _snippet_payload(record: dict[str, Any]) -> dict[str, Any]:
         "ts": record["ts"],
         "datetime": record["datetime"],
         "is_self": bool(record["is_self"]),
+        "sender_wxid": record.get("sender_wxid"),
         "kind": record["kind"],
         "summary": summarize_record(record),
     }
@@ -148,14 +149,16 @@ def _warehouse_record(row: Any) -> dict[str, Any]:
         "ts": row["ts"],
         "datetime": row["datetime"],
         "is_self": bool(row["is_self"]),
+        "sender_wxid": row["sender_wxid"],
         "kind": row["kind"],
         "text": row["text"],
         "decoded": json.loads(decoded_raw) if decoded_raw else {},
     }
 
 
-def preview_direct_targets(
+def preview_targets(
     config: AppConfig,
+    kind: str = "direct",
     limit: int = 30,
     snippets_per_target: int = 2,
     refresh: bool = False,
@@ -164,7 +167,7 @@ def preview_direct_targets(
         return []
 
     source = SourceRepository(config.wechat.decrypted_root)
-    targets = source.list_targets(kind="direct")[:limit]
+    targets = source.list_targets(kind=kind)[:limit]
     if not targets:
         return []
 
@@ -197,6 +200,21 @@ def preview_direct_targets(
     return previews
 
 
+def preview_direct_targets(
+    config: AppConfig,
+    limit: int = 30,
+    snippets_per_target: int = 2,
+    refresh: bool = False,
+) -> list[dict[str, Any]]:
+    return preview_targets(
+        config,
+        kind="direct",
+        limit=limit,
+        snippets_per_target=snippets_per_target,
+        refresh=refresh,
+    )
+
+
 def format_preview_blocks(previews: list[dict[str, Any]]) -> str:
     blocks: list[str] = []
     for index, preview in enumerate(previews, start=1):
@@ -210,7 +228,11 @@ def format_preview_blocks(previews: list[dict[str, Any]]) -> str:
         snippets = preview.get("snippets") or []
         if snippets:
             for snippet_index, snippet in enumerate(snippets, start=1):
-                speaker = "me" if snippet["is_self"] else "them"
+                if preview["kind"] == "group":
+                    sender_wxid = snippet.get("sender_wxid") or "unknown"
+                    speaker = f"me({sender_wxid})" if snippet["is_self"] else sender_wxid
+                else:
+                    speaker = "me" if snippet["is_self"] else "them"
                 lines.append(
                     f"{snippet_index}. {snippet['datetime']} {speaker} {snippet['kind']}: {snippet['summary']}"
                 )

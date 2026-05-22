@@ -98,10 +98,11 @@ def test_cmd_capture_key_accepts_key_override(monkeypatch):
 def test_cmd_preview_json(monkeypatch, capsys):
     monkeypatch.setattr("wxctl.cli.load_config", lambda _: _dummy_config())
     monkeypatch.setattr(
-        "wxctl.cli.preview_direct_targets",
-        lambda config, limit, snippets_per_target, refresh: [
+        "wxctl.cli.preview_targets",
+        lambda config, kind, limit, snippets_per_target, refresh: [
             {
                 "target_id": "wxid_candidate",
+                "kind": kind,
                 "total_count": 20,
                 "text_count": 10,
                 "first_ts": 1700000000,
@@ -112,6 +113,7 @@ def test_cmd_preview_json(monkeypatch, capsys):
                     {
                         "datetime": "2023-11-14 22:30:00",
                         "is_self": False,
+                        "sender_wxid": "wxid_sender",
                         "kind": "text",
                         "summary": "最近消息",
                     }
@@ -122,6 +124,7 @@ def test_cmd_preview_json(monkeypatch, capsys):
 
     args = argparse.Namespace(
         config=None,
+        kind="group",
         limit=5,
         snippets=2,
         refresh=False,
@@ -130,4 +133,5 @@ def test_cmd_preview_json(monkeypatch, capsys):
     assert cmd_preview(args) == 0
     parsed = json.loads(capsys.readouterr().out)
     assert parsed[0]["target_id"] == "wxid_candidate"
+    assert parsed[0]["kind"] == "group"
     assert parsed[0]["snippets"][0]["summary"] == "最近消息"
