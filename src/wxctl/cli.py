@@ -13,6 +13,7 @@ from wxctl.services.capture_key import CaptureKeyError, run_capture_key
 from wxctl.services.decrypt import DecryptError, decrypt_all
 from wxctl.services.doctor import run_doctor
 from wxctl.services.dump import dump_target, write_jsonl
+from wxctl.services.preview import format_preview_blocks, preview_direct_targets
 from wxctl.services.sync import SyncError, sync_targets
 
 
@@ -111,6 +112,25 @@ def cmd_dump(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_preview(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    previews = preview_direct_targets(
+        config,
+        limit=args.limit,
+        snippets_per_target=args.snippets,
+        refresh=args.refresh,
+    )
+    if args.format == "json":
+        _print_json(previews)
+        return 0
+    if args.format == "jsonl":
+        for preview in previews:
+            print(json.dumps(preview, ensure_ascii=False))
+        return 0
+    print(format_preview_blocks(previews))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="wxctl", description="WeChat interaction control CLI")
     parser.add_argument("--config", default=None, help="Path to app.yaml")
@@ -148,6 +168,13 @@ def build_parser() -> argparse.ArgumentParser:
     dump.add_argument("--output", default=None)
     dump.add_argument("--limit", type=int, default=None)
     dump.set_defaults(func=cmd_dump)
+
+    preview = sub.add_parser("preview", help="Preview top direct chat candidates with representative snippets")
+    preview.add_argument("--limit", type=int, default=30)
+    preview.add_argument("--snippets", type=int, default=2)
+    preview.add_argument("--refresh", action="store_true")
+    preview.add_argument("--format", choices=["text", "json", "jsonl"], default="text")
+    preview.set_defaults(func=cmd_preview)
 
     return parser
 

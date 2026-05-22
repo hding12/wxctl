@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from wxctl.adapters.sqlite_source import TargetSummary
-from wxctl.cli import cmd_capture_key, cmd_targets
+from wxctl.cli import cmd_capture_key, cmd_preview, cmd_targets
 from wxctl.config import AppConfig, RuntimeConfig, WeChatConfig
 
 
@@ -93,3 +93,41 @@ def test_cmd_capture_key_accepts_key_override(monkeypatch):
     assert cmd_capture_key(args) == 0
     assert seen["python_bin"] == "/usr/bin/python3"
     assert seen["key_file"] == Path("/tmp/custom/wechat_keys.json").resolve()
+
+
+def test_cmd_preview_json(monkeypatch, capsys):
+    monkeypatch.setattr("wxctl.cli.load_config", lambda _: _dummy_config())
+    monkeypatch.setattr(
+        "wxctl.cli.preview_direct_targets",
+        lambda config, limit, snippets_per_target, refresh: [
+            {
+                "target_id": "wxid_candidate",
+                "total_count": 20,
+                "text_count": 10,
+                "first_ts": 1700000000,
+                "first_datetime": "2023-11-14 22:13:20",
+                "last_ts": 1700001000,
+                "last_datetime": "2023-11-14 22:30:00",
+                "snippets": [
+                    {
+                        "datetime": "2023-11-14 22:30:00",
+                        "is_self": False,
+                        "kind": "text",
+                        "summary": "最近消息",
+                    }
+                ],
+            }
+        ],
+    )
+
+    args = argparse.Namespace(
+        config=None,
+        limit=5,
+        snippets=2,
+        refresh=False,
+        format="json",
+    )
+    assert cmd_preview(args) == 0
+    parsed = json.loads(capsys.readouterr().out)
+    assert parsed[0]["target_id"] == "wxid_candidate"
+    assert parsed[0]["snippets"][0]["summary"] == "最近消息"
