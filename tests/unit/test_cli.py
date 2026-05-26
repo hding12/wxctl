@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from wxctl.adapters.sqlite_source import TargetSummary
-from wxctl.cli import cmd_capture_key, cmd_preview, cmd_targets
+from wxctl.cli import build_parser, cmd_capture_key, cmd_preview, cmd_targets
 from wxctl.config import AppConfig, RuntimeConfig, WeChatConfig
 
 
@@ -135,3 +135,21 @@ def test_cmd_preview_json(monkeypatch, capsys):
     assert parsed[0]["target_id"] == "wxid_candidate"
     assert parsed[0]["kind"] == "group"
     assert parsed[0]["snippets"][0]["summary"] == "最近消息"
+
+
+def test_build_parser_accepts_dump_input():
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "dump",
+            "--target",
+            "wxid_xxx",
+            "--input",
+            "archive-old.jsonl",
+            "--output",
+            "archive-new.jsonl",
+        ]
+    )
+    assert args.target == "wxid_xxx"
+    assert args.input == "archive-old.jsonl"
+    assert args.output == "archive-new.jsonl"

@@ -102,7 +102,13 @@ def cmd_dump(args: argparse.Namespace) -> int:
     target = args.target or args.group
     if not target:
         raise SystemExit("dump requires --target or --group")
-    records = dump_target(config, target=target, refresh=args.refresh, limit=args.limit)
+    records = dump_target(
+        config,
+        target=target,
+        refresh=args.refresh,
+        limit=args.limit,
+        input_path=args.input,
+    )
     if args.stdout:
         for record in records:
             print(json.dumps(record, ensure_ascii=False))
@@ -168,6 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     dump.add_argument("--stdout", action="store_true")
     dump.add_argument("--output", default=None)
     dump.add_argument("--limit", type=int, default=None)
+    dump.add_argument("--input", default=None, help="Existing JSONL archive to merge and preserve")
     dump.set_defaults(func=cmd_dump)
 
     preview = sub.add_parser("preview", help="Preview top chat candidates with representative snippets")

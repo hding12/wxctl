@@ -148,7 +148,12 @@ Running the same `sync` again updates existing messages (no duplicates):
 ```bash
 PYTHONPATH=src python3 -m wxctl.cli dump --target wxid_xxx --stdout --limit 10
 PYTHONPATH=src python3 -m wxctl.cli dump --group wxid_group@chatroom --stdout
+PYTHONPATH=src python3 -m wxctl.cli dump --target wxid_xxx --input archive-old.jsonl --output archive-new.jsonl
 ```
+
+When `--input` is provided, warehouse records overwrite matching entries from the
+existing archive by stable key `target_id + source_db + local_id`, while old
+archive records missing from the warehouse are preserved.
 
 Sample JSONL record:
 

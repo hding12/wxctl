@@ -9,15 +9,49 @@ from wxctl.store.engine import Warehouse
 from wxctl.services.sync import sync_targets
 
 
-def dump_target(config: AppConfig, target: str, refresh: bool = False, limit: int | None = None) -> list[dict]:
+def _load_jsonl(path: str) -> list[dict]:
+    p = Path(path).expanduser().resolve()
+    if not p.exists() or p.stat().st_size == 0:
+        return []
+    records: list[dict] = []
+    with open(p, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+    return records
+
+
+def _stable_key(record: dict) -> str:
+    return f"{record.get('target_id', '')}:{record.get('source_db', '')}:{record.get('local_id', '')}"
+
+
+def _merge_records(old_records: list[dict], warehouse_records: list[dict]) -> list[dict]:
+    merged_by_key: dict[str, dict] = {}
+    for record in old_records:
+        merged_by_key[_stable_key(record)] = record
+    for record in warehouse_records:
+        merged_by_key[_stable_key(record)] = record
+    merged = list(merged_by_key.values())
+    merged.sort(key=lambda r: (r.get("ts", 0), r.get("local_id", 0)))
+    return merged
+
+
+def dump_target(
+    config: AppConfig,
+    target: str,
+    refresh: bool = False,
+    limit: int | None = None,
+    input_path: str | None = None,
+) -> list[dict]:
     if refresh:
         sync_targets(config, [target])
     warehouse = Warehouse(config.runtime)
-    records: list[dict] = []
+    warehouse_records: list[dict] = []
     for row in warehouse.fetch_messages(target, limit=limit):
         assets = warehouse.fetch_assets(row["source_db"], row["target_id"], row["local_id"])
         sender_info_raw = row["sender_info_json"]
-        records.append(
+        warehouse_records.append(
             {
                 "target_id": row["target_id"],
                 "conversation_hash": row["conversation_hash"],
@@ -40,7 +74,9 @@ def dump_target(config: AppConfig, target: str, refresh: bool = False, limit: in
                 },
             }
         )
-    return records
+    if input_path:
+        return _merge_records(_load_jsonl(input_path), warehouse_records)
+    return warehouse_records
 
 
 def write_jsonl(records: list[dict], output_path: str | None) -> str:
