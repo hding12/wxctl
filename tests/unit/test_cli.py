@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from wxctl.adapters.sqlite_source import TargetSummary
-from wxctl.cli import build_parser, cmd_capture_key, cmd_preview, cmd_targets
+from wxctl.cli import build_parser, cmd_capture_key, cmd_preview, cmd_resolve_contact, cmd_targets
 from wxctl.config import AppConfig, RuntimeConfig, WeChatConfig
 
 
@@ -153,3 +153,72 @@ def test_build_parser_accepts_dump_input():
     assert args.target == "wxid_xxx"
     assert args.input == "archive-old.jsonl"
     assert args.output == "archive-new.jsonl"
+
+
+def test_build_parser_accepts_resolve_contact():
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "resolve-contact",
+            "--alias",
+            "_470279647",
+            "--format",
+            "json",
+        ]
+    )
+    assert args.alias == "_470279647"
+    assert args.format == "json"
+
+
+def test_cmd_resolve_contact_json(monkeypatch, capsys):
+    monkeypatch.setattr("wxctl.cli.load_config", lambda _: _dummy_config())
+
+    class FakeContactDB:
+        def __init__(self, decrypted_root: Path) -> None:
+            self.available = True
+
+        def resolve_alias(self, alias: str):
+            assert alias == "_470279647"
+            return [
+                {
+                    "username": "wxid_zyej75369zsr21",
+                    "display_name": "。",
+                    "nick_name": "。",
+                    "remark": "。",
+                    "alias": "_470279647",
+                    "verify_flag": 0,
+                    "description": "",
+                    "big_head_url": "https://big",
+                    "small_head_url": "https://small",
+                    "head_img_md5": "abc123",
+                }
+            ]
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr("wxctl.cli.ContactDB", FakeContactDB)
+    args = argparse.Namespace(config=None, alias="_470279647", format="json")
+    assert cmd_resolve_contact(args) == 0
+    parsed = json.loads(capsys.readouterr().out)
+    assert parsed[0]["username"] == "wxid_zyej75369zsr21"
+    assert parsed[0]["alias"] == "_470279647"
+
+
+def test_cmd_resolve_contact_table_no_results(monkeypatch, capsys):
+    monkeypatch.setattr("wxctl.cli.load_config", lambda _: _dummy_config())
+
+    class FakeContactDB:
+        def __init__(self, decrypted_root: Path) -> None:
+            self.available = True
+
+        def resolve_alias(self, alias: str):
+            return []
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr("wxctl.cli.ContactDB", FakeContactDB)
+    args = argparse.Namespace(config=None, alias="missing", format="table")
+    assert cmd_resolve_contact(args) == 0
+    assert "No contacts found." in capsys.readouterr().out

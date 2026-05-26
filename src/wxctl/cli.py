@@ -9,6 +9,7 @@ import sys
 
 from wxctl.adapters.sqlite_source import SourceRepository
 from wxctl.config import load_config
+from wxctl.resolvers.target_resolver import ContactDB
 from wxctl.services.capture_key import CaptureKeyError, run_capture_key
 from wxctl.services.decrypt import DecryptError, decrypt_all
 from wxctl.services.doctor import run_doctor
@@ -23,6 +24,20 @@ def _print_json(data) -> None:
 
 def _target_payload(target) -> dict:
     return asdict(target)
+
+
+def _print_table(rows: list[dict], fields: list[str]) -> None:
+    if not rows:
+        print("No contacts found.")
+        return
+    widths = {
+        field: max(len(field), *(len(str(row.get(field, "") or "")) for row in rows))
+        for field in fields
+    }
+    print(" ".join(f"{field:<{widths[field]}}" for field in fields))
+    print(" ".join("-" * widths[field] for field in fields))
+    for row in rows:
+        print(" ".join(f"{str(row.get(field, '') or ''):<{widths[field]}}" for field in fields))
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -138,6 +153,26 @@ def cmd_preview(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_resolve_contact(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    contacts = ContactDB(config.wechat.decrypted_root)
+    try:
+        if not contacts.available:
+            raise SystemExit("contact.db unavailable")
+        rows = contacts.resolve_alias(args.alias)
+        if args.format == "json":
+            _print_json(rows)
+            return 0
+        if args.format == "jsonl":
+            for row in rows:
+                print(json.dumps(row, ensure_ascii=False))
+            return 0
+        _print_table(rows, ["username", "alias", "remark", "nick_name", "display_name"])
+        return 0
+    finally:
+        contacts.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="wxctl", description="WeChat interaction control CLI")
     parser.add_argument("--config", default=None, help="Path to app.yaml")
@@ -184,6 +219,11 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument("--refresh", action="store_true")
     preview.add_argument("--format", choices=["text", "json", "jsonl"], default="text")
     preview.set_defaults(func=cmd_preview)
+
+    resolve_contact = sub.add_parser("resolve-contact", help="Resolve alias to one or more real contact ids")
+    resolve_contact.add_argument("--alias", required=True)
+    resolve_contact.add_argument("--format", choices=["table", "json", "jsonl"], default="table")
+    resolve_contact.set_defaults(func=cmd_resolve_contact)
 
     return parser
 

@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Iterable
 
 from wxctl.config import AppConfig
+from wxctl.resolvers.sender_resolver import SenderResolver
+from wxctl.resolvers.target_resolver import ContactDB
 from wxctl.store.engine import Warehouse
 from wxctl.services.sync import sync_targets
 
@@ -47,33 +49,46 @@ def dump_target(
     if refresh:
         sync_targets(config, [target])
     warehouse = Warehouse(config.runtime)
-    warehouse_records: list[dict] = []
-    for row in warehouse.fetch_messages(target, limit=limit):
-        assets = warehouse.fetch_assets(row["source_db"], row["target_id"], row["local_id"])
-        sender_info_raw = row["sender_info_json"]
-        warehouse_records.append(
-            {
-                "target_id": row["target_id"],
-                "conversation_hash": row["conversation_hash"],
-                "source_db": row["source_db"],
-                "local_id": row["local_id"],
-                "server_id": row["server_id"],
-                "ts": row["ts"],
-                "datetime": row["datetime"],
-                "sender_wxid": row["sender_wxid"],
-                "sender_info": json.loads(sender_info_raw) if sender_info_raw else None,
-                "is_self": bool(row["is_self"]),
-                "raw_type": row["raw_type"],
-                "kind": row["kind"],
-                "text": row["text"],
-                "decoded": json.loads(row["decoded_json"]),
-                "assets": assets,
-                "raw": {
-                    "payload_path": row["raw_payload_path"],
-                    "packed_info_hex": row["packed_info_hex"],
-                },
-            }
-        )
+    contacts = ContactDB(config.wechat.decrypted_root)
+    sender_resolver = SenderResolver(config.wechat.decrypted_root)
+    try:
+        target_info = contacts.build_target_info(target)
+        warehouse_records: list[dict] = []
+        for row in warehouse.fetch_messages(target, limit=limit):
+            assets = warehouse.fetch_assets(row["source_db"], row["target_id"], row["local_id"])
+            sender_info_raw = row["sender_info_json"]
+            sender_info_from_row = json.loads(sender_info_raw) if sender_info_raw else None
+            sender_info_live = sender_resolver.resolve(row["sender_wxid"]) if row["sender_wxid"] else None
+            sender_info = sender_info_from_row or sender_info_live
+            if sender_info_from_row and sender_info_live:
+                sender_info = {**sender_info_from_row, **sender_info_live}
+            warehouse_records.append(
+                {
+                    "target_id": row["target_id"],
+                    "target_info": target_info,
+                    "conversation_hash": row["conversation_hash"],
+                    "source_db": row["source_db"],
+                    "local_id": row["local_id"],
+                    "server_id": row["server_id"],
+                    "ts": row["ts"],
+                    "datetime": row["datetime"],
+                    "sender_wxid": row["sender_wxid"],
+                    "sender_info": sender_info,
+                    "is_self": bool(row["is_self"]),
+                    "raw_type": row["raw_type"],
+                    "kind": row["kind"],
+                    "text": row["text"],
+                    "decoded": json.loads(row["decoded_json"]),
+                    "assets": assets,
+                    "raw": {
+                        "payload_path": row["raw_payload_path"],
+                        "packed_info_hex": row["packed_info_hex"],
+                    },
+                }
+            )
+    finally:
+        sender_resolver.close()
+        contacts.close()
     if input_path:
         return _merge_records(_load_jsonl(input_path), warehouse_records)
     return warehouse_records

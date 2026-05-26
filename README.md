@@ -102,6 +102,24 @@ PYTHONPATH=src python3 -m wxctl.cli targets
 PYTHONPATH=src python3 -m wxctl.cli targets --format jsonl
 ```
 
+### Resolve alias to real contact id
+
+```bash
+PYTHONPATH=src python3 -m wxctl.cli resolve-contact --alias _470279647
+PYTHONPATH=src python3 -m wxctl.cli resolve-contact --alias _470279647 --format json
+```
+
+This prints one or more matching contacts directly to the console. Use the
+returned `username` (the real `wxid`) for `sync` and `dump`.
+
+Example workflow:
+
+```bash
+PYTHONPATH=src python3 -m wxctl.cli resolve-contact --alias _470279647 --format json
+PYTHONPATH=src python3 -m wxctl.cli sync --target wxid_zyej75369zsr21
+PYTHONPATH=src python3 -m wxctl.cli dump --target wxid_zyej75369zsr21 --output /tmp/wxid_zyej75369zsr21.jsonl
+```
+
 ### Sync messages for one target
 
 ```bash

@@ -12,8 +12,8 @@ class SenderResolver:
     In group chats, message senders are identified by wxid in the sender_wxid field.
     This resolver provides:
 
-    - display_name: best-effort nickname or alias
-    - avatar: candidate avatar path if available
+    - display_name: best-effort remark / nickname / alias
+    - profile fields from contact.db when available
     - Graceful degradation when contact.db is unavailable.
     """
 
@@ -23,34 +23,37 @@ class SenderResolver:
 
     def resolve(self, wxid: str | None) -> dict[str, Any]:
         if wxid is None:
-            return {"wxid": None, "display_name": None, "avatar": None}
+            return {
+                "wxid": None,
+                "display_name": None,
+                "nick_name": None,
+                "remark": None,
+                "alias": None,
+                "verify_flag": None,
+                "description": None,
+                "big_head_url": None,
+                "small_head_url": None,
+                "head_img_md5": None,
+            }
 
         # Check cache first
         cached = self._sender_cache.get(wxid)
         if cached is not None:
             return cached
 
-        # Look up from contact.db
-        contact = self.contacts.lookup(wxid)
-        if contact:
-            display_name = (
-                contact.get("remark")
-                or contact.get("nick_name")
-                or wxid
-            )
-            result = {
-                "wxid": wxid,
-                "display_name": display_name,
-                "nick_name": contact.get("nick_name"),
-                "remark": contact.get("remark"),
-            }
-        else:
-            result = {
-                "wxid": wxid,
-                "display_name": wxid,
-                "nick_name": None,
-                "remark": None,
-            }
+        contact = self.contacts.normalize_contact(wxid)
+        result = {
+            "wxid": wxid,
+            "display_name": contact.get("display_name"),
+            "nick_name": contact.get("nick_name"),
+            "remark": contact.get("remark"),
+            "alias": contact.get("alias"),
+            "verify_flag": contact.get("verify_flag"),
+            "description": contact.get("description"),
+            "big_head_url": contact.get("big_head_url"),
+            "small_head_url": contact.get("small_head_url"),
+            "head_img_md5": contact.get("head_img_md5"),
+        }
 
         self._sender_cache[wxid] = result
         return result

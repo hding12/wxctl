@@ -5,10 +5,19 @@ import sqlite3
 from typing import Any
 
 
-# Actual contact.db schema (confirmed from decrypt output):
-#   username, remark, nick_name
-# No alias or avatar columns in the contact table.
-_CONTACT_COLUMNS = ["username", "remark", "nick_name"]
+# Actual contact.db schema (confirmed from decrypt output) includes richer
+# contact fields than the initial minimal implementation exposed.
+_CONTACT_COLUMNS = [
+    "username",
+    "alias",
+    "remark",
+    "nick_name",
+    "verify_flag",
+    "description",
+    "big_head_url",
+    "small_head_url",
+    "head_img_md5",
+]
 _CONTACT_SELECT = ", ".join(_CONTACT_COLUMNS)
 
 
@@ -28,6 +37,7 @@ class ContactDB:
         self._conn: sqlite3.Connection | None = None
         self._cache: dict[str, dict[str, Any]] = {}
         self._columns: list[str] = list(_CONTACT_COLUMNS)
+        self._group_meta_cache: dict[str, dict[str, Any]] = {}
         self._init(decrypted_root)
 
     def _init(self, decrypted_root: Path) -> None:
@@ -84,8 +94,53 @@ class ContactDB:
             return cached
         return {
             "username": wxid,
+            "alias": None,
             "nick_name": None,
             "remark": None,
+            "verify_flag": None,
+            "description": None,
+            "big_head_url": None,
+            "small_head_url": None,
+            "head_img_md5": None,
+        }
+
+    def display_name_for(self, contact: dict[str, Any] | None, fallback: str | None) -> str | None:
+        if contact is None:
+            return fallback
+        return (
+            contact.get("remark")
+            or contact.get("nick_name")
+            or contact.get("alias")
+            or contact.get("username")
+            or fallback
+        )
+
+    def normalize_contact(self, wxid: str | None) -> dict[str, Any]:
+        if wxid is None:
+            return {
+                "username": None,
+                "display_name": None,
+                "nick_name": None,
+                "remark": None,
+                "alias": None,
+                "verify_flag": None,
+                "description": None,
+                "big_head_url": None,
+                "small_head_url": None,
+                "head_img_md5": None,
+            }
+        contact = self.lookup_with_fallback(wxid)
+        return {
+            "username": wxid,
+            "display_name": self.display_name_for(contact, wxid),
+            "nick_name": contact.get("nick_name"),
+            "remark": contact.get("remark"),
+            "alias": contact.get("alias"),
+            "verify_flag": contact.get("verify_flag"),
+            "description": contact.get("description"),
+            "big_head_url": contact.get("big_head_url"),
+            "small_head_url": contact.get("small_head_url"),
+            "head_img_md5": contact.get("head_img_md5"),
         }
 
     def lookup_group(self, group_id: str) -> dict[str, Any] | None:
@@ -104,7 +159,75 @@ class ContactDB:
             pass
         return None
 
-    _SEARCHABLE = frozenset({"nick_name", "remark", "username"})
+    def lookup_group_meta(self, group_id: str) -> dict[str, Any] | None:
+        if self._conn is None:
+            return None
+        cached = self._group_meta_cache.get(group_id)
+        if cached is not None:
+            return cached
+        try:
+            room = self._conn.execute(
+                "SELECT owner FROM chat_room WHERE username = ?",
+                (group_id,),
+            ).fetchone()
+            detail = self._conn.execute(
+                """
+                SELECT announcement_, announcement_editor_, announcement_publish_time_, chat_room_status_
+                FROM chat_room_info_detail
+                WHERE username_ = ?
+                """,
+                (group_id,),
+            ).fetchone()
+            member_count_row = self._conn.execute(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM chatroom_member
+                WHERE room_id = (SELECT id FROM chat_room WHERE username = ?)
+                """,
+                (group_id,),
+            ).fetchone()
+            meta = {
+                "owner": room["owner"] if room else None,
+                "announcement": detail["announcement_"] if detail else None,
+                "announcement_editor": detail["announcement_editor_"] if detail else None,
+                "announcement_publish_time": detail["announcement_publish_time_"] if detail else None,
+                "chat_room_status": detail["chat_room_status_"] if detail else None,
+                "member_count": int(member_count_row["cnt"]) if member_count_row else 0,
+            }
+            self._group_meta_cache[group_id] = meta
+            return meta
+        except Exception:
+            return None
+
+    def build_target_info(self, target_id: str) -> dict[str, Any]:
+        base = self.normalize_contact(target_id)
+        info = {
+            "username": target_id,
+            "display_name": base["display_name"],
+            "nick_name": base["nick_name"],
+            "remark": base["remark"],
+            "alias": base["alias"],
+            "verify_flag": base["verify_flag"],
+            "description": base["description"],
+            "big_head_url": base["big_head_url"],
+            "small_head_url": base["small_head_url"],
+            "head_img_md5": base["head_img_md5"],
+        }
+        if target_id.endswith("@chatroom"):
+            group_meta = self.lookup_group_meta(target_id) or {}
+            info.update(
+                {
+                    "owner": group_meta.get("owner"),
+                    "announcement": group_meta.get("announcement"),
+                    "announcement_editor": group_meta.get("announcement_editor"),
+                    "announcement_publish_time": group_meta.get("announcement_publish_time"),
+                    "chat_room_status": group_meta.get("chat_room_status"),
+                    "member_count": group_meta.get("member_count"),
+                }
+            )
+        return info
+
+    _SEARCHABLE = frozenset({"alias", "nick_name", "remark", "username"})
 
     def _search_where_clause(self) -> tuple[str, list[str]]:
         """Build WHERE clause and placeholders from detected columns."""
@@ -128,6 +251,20 @@ class ContactDB:
                 params,
             ).fetchall()
             return [dict(row) for row in rows]
+        except Exception:
+            return []
+
+    def resolve_alias(self, alias: str) -> list[dict[str, Any]]:
+        """Resolve one alias to one or more exact-match contacts."""
+        if self._conn is None or "alias" not in self._columns:
+            return []
+        try:
+            select = ", ".join(self._columns)
+            rows = self._conn.execute(
+                f"SELECT {select} FROM contact WHERE alias = ? ORDER BY username",
+                (alias,),
+            ).fetchall()
+            return [self.normalize_contact(row["username"]) for row in rows]
         except Exception:
             return []
 
